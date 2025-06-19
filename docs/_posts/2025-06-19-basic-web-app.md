@@ -71,6 +71,39 @@ Whilst this app isn't intended for production use, there are still some things w
 ## Monitoring
 Logs and metrics need to be sent to a Log Analytics Workspace in order to use them for things such as sending alerts and tracking application performance. The config in the file "monitor.tf" will deploy a Log Analytics Workspace and configure a diagnostic setting to send all logs and metrics from the app service and the SQL database to it. Copy the file into your Terraform deployment directory and apply it. Some things to note here:
 
-- 
+- When enabling logs, as seen in the enabled-log block of the azurerm_monitor_diagnostic_setting blocks, the easiest way to add all available logs is to do a data lookup as seen in azurerm_monitor_diagnostic_categories, then use for_each to loop through each log category. The longer way is to have a enabled_log block for each log category you want to enable, which is time consuming and error-prone.
+- It takes some time to ingest the logs into the workspace. If you wait 5-10 minutes after deployment, then browse to the Log Analytics Workspace, then select "Logs", you will see the tables containing the logs forwarded from the app and sql database.
+- Similar with Metrics, If you wait 5-10 minutes after deployment, then browse to the Log Analytics Workspace, then select "Metrics", you will see the metrics that the app and sql database send to the Workspace.
+
+## Application Insights
+Application Insights sends logs from directly within the application to allow you to troubleshoot things such as request failures. In this solution, an azurerm_app_insights resource is provisioned, and you can enable application insights on the demo app by adding the "APPLICATIONINSIGHTS_CONNECTION_STRING" key to the application config. To do this, uncomment line 40 and 41 (to enable the agent) in the "web-app.tf" code and re-apply, after deploying the config in "Monitor.tf".
+
+- This procedure configures Application Insights for a .Net application, using the most up-to-date method of [connection strings](https://learn.microsoft.com/en-us/azure/azure-monitor/app/connection-strings). There are other methods to deploy App Insights for your application, depending on the type of code you're deploying (e.g. Python, Node). This is beyond the scope of this demo.
+- To verify that App Insights is working, browse to the web app's URL, hit "Database test" a few times, then browse to the Application Insights resource deployed by "Monitor.tf". Under "Investigate > Failures", you should see a graph showing the successful request count increasing, indicating that the app is sending metrics to Application Insights.
 
 ## Private Networking
+Finally we're going to enable private networking, to stop traffic between the app and the SQL server from leaving the vnet. Copy the config "network.tf" into your Terraform deployment directory. This will create a few different things:
+
+- A Virtual Network and subnet
+- A private DNS zone for SQL service. More on that [here](https://learn.microsoft.com/en-us/azure/private-link/private-endpoint-dns-integration#virtual-network-workloads-without-azure-private-resolver)
+- VNet links from the DNS zones to the vnet
+- A private endpoint for the SQL service, connected into the subnet
+- I've omitted a private endpoint for the app service, as it isn't completely necessary for this demonstration and requires the plan to be on at least the "Basic" tier, however in production you would almost certainly deploy one.
+
+After the improvements added above, this is how a typical request should now flow between client, app service and SQL:
+
+![Final deployment](/assets/basic-web-app/final.png)
+
+Notice that:
+- The client still connects to the app service over the internet. This is necessary as the private endpoint only provides an internal IP. As above, this connectivity would normally be protected by a Web App Firewall, App Gateway or other configuration in production.
+- To talk to the SQL database, the web app uses it's private endpoint to communicate with the private endpoint of the SQL service. It uses the private DNS zone privatelink.database.windows.net to resolve an internal, non-routable IP address for the SQL server, so the traffic can't leave the Microsoft network. This would also apply if the SQL service needed to initiate a connection to the app service.
+- Normally you'd put NSGs on all of the subnets and have an explicit deny rule to prevent unspecified traffic from entering or leaving the subnet, however for demonstration purposes we're leaving this off for now. In production you should always have NSGs as the most basic form of network protection.
+
+# Final notes
+Although this is really more of a proof-of-concept design, the core principles for an N-tier application are the same:
+
+- Internet-facing app service connecting to a database on the back end
+- Traffic configured to stay within the Microsoft backbone network
+- Azure Monitor configured to provide observability
+
+There's a lot more about this type of architecture to explore. We're going to use this as a basis for looking at other concepts in more detail. Next we're going to focus on some of the availability options for Azure MS SQL in this solution.
