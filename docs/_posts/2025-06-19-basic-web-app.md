@@ -1,7 +1,7 @@
 ---
 layout: post
 title:  "Azure basic web app"
-date:   2025-06-19 14:00:00 +0100
+date:   2025-06-19 11:11:00 +0100
 categories: azure compute
 ---
 
