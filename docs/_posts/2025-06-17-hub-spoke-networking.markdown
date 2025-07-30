@@ -8,13 +8,15 @@ categories: azure networking
 # Overview & Setup
 This post is based on the hub-and-spoke networking demo repository here: [GitHub Repo networking-lab](https://github.com/Comrade44/networking-lab). To use and follow along with the instructions in this article, you can either clone the repo and follow the instructions for setting it up in your own GitHub organisation, then use the pipeline to deploy the infrastructure, or use the Terraform files as-is and deploy using another method.
 
-To begin, the following Terraform config should be deployed. All numbered config files should be left outside of the terraform directory, or out of the deployment code path:
+To begin, the following Terraform config should be deployed by copying the files from the "hub-spoke-demo" folder into the "terraform" folder. All numbered config files should be left outside of the terraform directory, or out of the deployment code path:
 
 - uks-spokea-net.tf - Deploys the networking components for the spoke A vnet
 - uks-spokea-vm.tf - Deploys a VM into the spoke A vnet for testing purposes
 - uks-spokeb-net.tf - Deploys the networking components for the spoke B vnet
 - uks-spokeb-vm.tf - Deploys a VM into the spoke B vnet for testing purposes
 - bastion.tf - Deploys a Bastion instance and connects it into the spoke A vnet, to allow testing from vm-a
+
+Where an instruction is given to use the config in a certain file, copy the file or it's contents into the Terraform folder.
 
 ## Basic networking
 As standard, outbound internet access for resources connected into an Azure Virtual Network is directly out to the internet, using one of Azure's random outbound public IPs. This is due to be deprecated in September 2025 [Microsoft Learn article](https://learn.microsoft.com/en-us/azure/virtual-network/ip-services/default-outbound-access).
